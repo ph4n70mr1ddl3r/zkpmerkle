@@ -15,3 +15,5 @@ data/*
 .DS_Store
 
 merkle.db/
+
+data/
