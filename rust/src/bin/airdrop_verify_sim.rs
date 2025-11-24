@@ -98,8 +98,6 @@ fn main() -> Result<()> {
         "leaf hash mismatch"
     );
 
-    let pk_x_fr = fr_from_hex32(&proof.pubkey.x)?;
-    let pk_y_fr = fr_from_hex32(&proof.pubkey.y)?;
     let sig_r_fr = fr_from_hex32(&proof.signature.r)?;
     let sig_s_fr = fr_from_hex32(&proof.signature.s)?;
     let sig_hash = poseidon_hash2(sig_r_fr, sig_s_fr)?;

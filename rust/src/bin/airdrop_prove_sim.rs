@@ -112,8 +112,6 @@ fn main() -> Result<()> {
         computed_leaf == leaf_hash,
         "stored leaf does not match Poseidon(address)"
     );
-    let pk_x_fr = fr_from_hex32(&pk_x_hex)?;
-    let pk_y_fr = fr_from_hex32(&pk_y_hex)?;
     let sig_r_fr = fr_from_hex32(&sig_r_hex)?;
     let sig_s_fr = fr_from_hex32(&sig_s_hex)?;
 
@@ -305,12 +303,6 @@ fn pack_key(level: u32, idx: u64) -> [u8; 12] {
     buf
 }
 
-fn poseidon_address(address: &str) -> Result<Fr> {
-    let mut poseidon =
-        Poseidon::<Fr>::new_circom(2).context("failed to init Poseidon (circom-compatible)")?;
-    hash_address(address, &mut poseidon, Fr::zero())
-}
-
 fn fr_from_hex32(h: &str) -> Result<Fr> {
     let bytes = hex::decode(h).context("invalid hex")?;
     ensure!(bytes.len() == 32, "expected 32-byte hex");
@@ -327,13 +319,6 @@ fn poseidon_hash2(a: Fr, b: Fr) -> Result<Fr> {
         .map_err(|e| anyhow!(e.to_string()))
 }
 
-fn poseidon_hash3(a: Fr, b: Fr, c: Fr) -> Result<Fr> {
-    let mut poseidon =
-        Poseidon::<Fr>::new_circom(3).context("failed to init Poseidon (circom-compatible)")?;
-    poseidon
-        .hash(&[a, b, c])
-        .map_err(|e| anyhow!(e.to_string()))
-}
 
 fn hash_address(address_hex: &str, poseidon: &mut Poseidon<Fr>, zero_leaf: Fr) -> Result<Fr> {
     let addr = address_hex.trim_start_matches("0x");
