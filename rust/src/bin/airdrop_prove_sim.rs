@@ -112,13 +112,12 @@ fn main() -> Result<()> {
         computed_leaf == leaf_hash,
         "stored leaf does not match Poseidon(address)"
     );
-    let sig_r_fr = fr_from_hex32(&sig_r_hex)?;
-    let sig_s_fr = fr_from_hex32(&sig_s_hex)?;
-
-    // Nullifier = Poseidon(Poseidon(sig_r, sig_s), DROP_DOMAIN)
-    let sig_hash = poseidon_hash2(sig_r_fr, sig_s_fr)?;
+    // Nullifier = Poseidon(Poseidon(pk_x, pk_y), DROP_DOMAIN)
+    let pk_x_fr = fr_from_hex32(&pk_x_hex)?;
+    let pk_y_fr = fr_from_hex32(&pk_y_hex)?;
+    let identity = poseidon_hash2(pk_x_fr, pk_y_fr)?;
     let drop_domain = Fr::from(1u64);
-    let nullifier = poseidon_hash2(sig_hash, drop_domain)?;
+    let nullifier = poseidon_hash2(identity, drop_domain)?;
 
     let proof = ProofSim {
         message: args.message,

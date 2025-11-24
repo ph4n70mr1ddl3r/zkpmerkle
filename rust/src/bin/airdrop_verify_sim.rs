@@ -98,11 +98,11 @@ fn main() -> Result<()> {
         "leaf hash mismatch"
     );
 
-    let sig_r_fr = fr_from_hex32(&proof.signature.r)?;
-    let sig_s_fr = fr_from_hex32(&proof.signature.s)?;
-    let sig_hash = poseidon_hash2(sig_r_fr, sig_s_fr)?;
+    let pk_x_fr = fr_from_hex32(&proof.pubkey.x)?;
+    let pk_y_fr = fr_from_hex32(&proof.pubkey.y)?;
+    let identity = poseidon_hash2(pk_x_fr, pk_y_fr)?;
     let drop_domain = Fr::from(1u64);
-    let nullifier = poseidon_hash2(sig_hash, drop_domain)?;
+    let nullifier = poseidon_hash2(identity, drop_domain)?;
     ensure!(
         nullifier.into_bigint().to_string() == proof.nullifier,
         "nullifier mismatch"
@@ -212,12 +212,6 @@ fn hash_address(address_hex: &str, poseidon: &mut Poseidon<Fr>, zero_leaf: Fr) -
     }
 }
 
-fn poseidon_address(address: &str) -> Result<Fr> {
-    let mut poseidon =
-        Poseidon::<Fr>::new_circom(2).context("failed to init Poseidon (circom-compatible)")?;
-    hash_address(address, &mut poseidon, Fr::zero())
-}
-
 fn fr_from_hex32(h: &str) -> Result<Fr> {
     let bytes = hex::decode(h).context("invalid hex32")?;
     ensure!(bytes.len() == 32, "expected 32-byte hex");
@@ -234,13 +228,6 @@ fn poseidon_hash2(a: Fr, b: Fr) -> Result<Fr> {
         .map_err(|e| anyhow!(e.to_string()))
 }
 
-fn poseidon_hash3(a: Fr, b: Fr, c: Fr) -> Result<Fr> {
-    let mut poseidon =
-        Poseidon::<Fr>::new_circom(3).context("failed to init Poseidon (circom-compatible)")?;
-    poseidon
-        .hash(&[a, b, c])
-        .map_err(|e| anyhow!(e.to_string()))
-}
 
 fn get_node<T: Transaction>(tx: &T, db: Database, level: u32, idx: u64) -> Result<Fr> {
     let key = pack_key(level, idx);
