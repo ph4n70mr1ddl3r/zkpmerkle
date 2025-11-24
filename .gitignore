@@ -16,4 +16,9 @@ data/*
 
 merkle.db/
 
+# Circom-generated artifacts for airdrop circuit
+circuits/airdrop_js/
+circuits/airdrop.r1cs
+circuits/airdrop.sym
+
 data/
