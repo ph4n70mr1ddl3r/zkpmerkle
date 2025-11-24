@@ -117,9 +117,10 @@ fn main() -> Result<()> {
     let sig_r_fr = fr_from_hex32(&sig_r_hex)?;
     let sig_s_fr = fr_from_hex32(&sig_s_hex)?;
 
-    // Nullifier = Poseidon(pk_x, pk_y, Poseidon(sig_r, sig_s))
+    // Nullifier = Poseidon(Poseidon(sig_r, sig_s), DROP_DOMAIN)
     let sig_hash = poseidon_hash2(sig_r_fr, sig_s_fr)?;
-    let nullifier = poseidon_hash3(pk_x_fr, pk_y_fr, sig_hash)?;
+    let drop_domain = Fr::from(1u64);
+    let nullifier = poseidon_hash2(sig_hash, drop_domain)?;
 
     let proof = ProofSim {
         message: args.message,

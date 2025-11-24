@@ -103,7 +103,8 @@ fn main() -> Result<()> {
     let sig_r_fr = fr_from_hex32(&proof.signature.r)?;
     let sig_s_fr = fr_from_hex32(&proof.signature.s)?;
     let sig_hash = poseidon_hash2(sig_r_fr, sig_s_fr)?;
-    let nullifier = poseidon_hash3(pk_x_fr, pk_y_fr, sig_hash)?;
+    let drop_domain = Fr::from(1u64);
+    let nullifier = poseidon_hash2(sig_hash, drop_domain)?;
     ensure!(
         nullifier.into_bigint().to_string() == proof.nullifier,
         "nullifier mismatch"

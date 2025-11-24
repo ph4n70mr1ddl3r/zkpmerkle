@@ -3,7 +3,7 @@
 This repo builds and proves a private airdrop circuit: a claimant proves they control an Ethereum secp256k1 key whose address is in a Merkle tree, without revealing the address or signature. The nullifier is `Poseidon(address)`, so each eligible address can claim exactly once. The Merkle root is immutable and comes from the prebuilt `merkle.db`/`merkleroot.txt`.
 
 ## Layout
-- `circuits/airdrop.circom` – Groth16 circuit (Keccak(pubkey) → address, Poseidon(address) leaf/nullifier, Merkle path, ECDSA on fixed msg `keccak256("zk-airdrop-claim")`).
+- `circuits/airdrop.circom` – Groth16 circuit (Keccak(pubkey) → address, Poseidon(address) leaf, Merkle path, ECDSA on fixed msg `keccak256("zk-airdrop-claim")`, nullifier = `Poseidon(Poseidon(sig_r, sig_s), DROP_DOMAIN)`).
 - `circuits/airdrop_js/` – generated WASM and witness calculator (ignored in git).
 - `circuits/airdrop_final.zkey`, `circuits/airdrop_verification_key.json` – Groth16 proving/verifying keys.
 - `circuits/vendor/` – Poseidon, Keccak, secp256k1 ECDSA gadgets.

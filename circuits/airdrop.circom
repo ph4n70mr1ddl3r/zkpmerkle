@@ -2,6 +2,7 @@ pragma circom 2.1.6;
 
 // Dependencies: circomlib Poseidon, vocdoni keccak256, circom-ecdsa (secp256k1)
 include "./vendor/circomlib/poseidon.circom";
+include "./vendor/circomlib/comparators.circom";
 include "./vendor/circomlib/keccak.circom";
 include "./vendor/circom-ecdsa/ecdsa.circom";
 
@@ -9,6 +10,9 @@ include "./vendor/circom-ecdsa/ecdsa.circom";
 // Public inputs: root, nullifier, recipient.
 // Witness: secp256k1 pubkey limbs, ECDSA signature limbs over fixed message, address bytes, merkle path.
 template Airdrop(DEPTH, LIMB_BITS, LIMB_COUNT) {
+    // Domain separator for this airdrop (scope nullifiers); replace with chainId/contract-specific value if needed.
+    var DROP_DOMAIN = 1;
+
     // Public signals
     signal input root;
     signal input nullifier;
@@ -34,6 +38,13 @@ template Airdrop(DEPTH, LIMB_BITS, LIMB_COUNT) {
     MSG_LIMBS[2] = 8588719646903862222;    // 0x773143038d1f83ce
     MSG_LIMBS[3] = 12770021320888601651;   // 0xb1383abb9dbacc33
 
+    // Low-s bound (secp256k1 order / 2) limbs (little-endian 64-bit)
+    var HALF_ORDER[LIMB_COUNT];
+    HALF_ORDER[0] = 16134479119472337056; // 0xdfe92f46681b20a0
+    HALF_ORDER[1] = 6725966010171805725;  // 0x5d576e7357a4501d
+    HALF_ORDER[2] = 18446744073709551615; // 0xffffffffffffffff
+    HALF_ORDER[3] = 9223372036854775807;  // 0x7fffffffffffffff
+
     // ECDSA verification
     component ecdsa = ECDSAVerifyNoPubkeyCheck(LIMB_BITS, LIMB_COUNT);
     for (var i = 0; i < LIMB_COUNT; i++) {
@@ -44,6 +55,35 @@ template Airdrop(DEPTH, LIMB_BITS, LIMB_COUNT) {
         ecdsa.pubkey[1][i] <== pk_y_limbs[i];
     }
     ecdsa.result === 1;
+
+    // Enforce low-s (canonical signature): s < n/2
+    component lt3 = LessThan(LIMB_BITS);
+    component lt2 = LessThan(LIMB_BITS);
+    component lt1 = LessThan(LIMB_BITS);
+    component lt0 = LessThan(LIMB_BITS);
+    component eq3 = IsEqual();
+    component eq2 = IsEqual();
+    component eq1 = IsEqual();
+    lt3.in[0] <== sig_s_limbs[3]; lt3.in[1] <== HALF_ORDER[3];
+    lt2.in[0] <== sig_s_limbs[2]; lt2.in[1] <== HALF_ORDER[2];
+    lt1.in[0] <== sig_s_limbs[1]; lt1.in[1] <== HALF_ORDER[1];
+    lt0.in[0] <== sig_s_limbs[0]; lt0.in[1] <== HALF_ORDER[0];
+    eq3.in[0] <== sig_s_limbs[3]; eq3.in[1] <== HALF_ORDER[3];
+    eq2.in[0] <== sig_s_limbs[2]; eq2.in[1] <== HALF_ORDER[2];
+    eq1.in[0] <== sig_s_limbs[1]; eq1.in[1] <== HALF_ORDER[1];
+    signal s1;
+    signal s2;
+    signal s3;
+    // s1 = lt1 || (eq1 && lt0)
+    s1 <== lt1.out + eq1.out * lt0.out;
+    s1 * (s1 - 1) === 0;
+    // s2 = lt2 || (eq2 && s1)
+    s2 <== lt2.out + eq2.out * s1;
+    s2 * (s2 - 1) === 0;
+    // s3 = lt3 || (eq3 && s2)
+    s3 <== lt3.out + eq3.out * s2;
+    s3 * (s3 - 1) === 0;
+    s3 === 1;
 
     // Pack limbs into field elements for hashing
     component pkxPack = Poseidon(LIMB_COUNT);
@@ -158,11 +198,10 @@ template Airdrop(DEPTH, LIMB_BITS, LIMB_COUNT) {
     }
     current[DEPTH] === root;
 
-    // Nullifier = Poseidon(pkxPack, pkyPack, Poseidon(sig_r, sig_s))
-    component nullifierHasher = Poseidon(3);
-    nullifierHasher.inputs[0] <== pkxPack.out;
-    nullifierHasher.inputs[1] <== pkyPack.out;
-    nullifierHasher.inputs[2] <== sigHasher.out;
+    // Nullifier = Poseidon(Poseidon(sig_r, sig_s), DROP_DOMAIN)
+    component nullifierHasher = Poseidon(2);
+    nullifierHasher.inputs[0] <== sigHasher.out;
+    nullifierHasher.inputs[1] <== DROP_DOMAIN;
     nullifier === nullifierHasher.out;
 }
 
