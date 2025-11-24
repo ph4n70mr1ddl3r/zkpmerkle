@@ -121,6 +121,16 @@ template Airdrop(DEPTH, LIMB_BITS, LIMB_COUNT) {
     signal leaf;
     leaf <== leafHasher.out;
 
+    component sigHasher = Poseidon(2);
+    component sigRPacker = Poseidon(LIMB_COUNT);
+    component sigSPacker = Poseidon(LIMB_COUNT);
+    for (var i = 0; i < LIMB_COUNT; i++) {
+        sigRPacker.inputs[i] <== sig_r_limbs[i];
+        sigSPacker.inputs[i] <== sig_s_limbs[i];
+    }
+    sigHasher.inputs[0] <== sigRPacker.out;
+    sigHasher.inputs[1] <== sigSPacker.out;
+
     // Merkle path
     signal current[DEPTH + 1];
     current[0] <== leaf;
@@ -148,8 +158,12 @@ template Airdrop(DEPTH, LIMB_BITS, LIMB_COUNT) {
     }
     current[DEPTH] === root;
 
-    // Nullifier = Poseidon(address)
-    nullifier === leaf;
+    // Nullifier = Poseidon(pkxPack, pkyPack, Poseidon(sig_r, sig_s))
+    component nullifierHasher = Poseidon(3);
+    nullifierHasher.inputs[0] <== pkxPack.out;
+    nullifierHasher.inputs[1] <== pkyPack.out;
+    nullifierHasher.inputs[2] <== sigHasher.out;
+    nullifier === nullifierHasher.out;
 }
 
 // Depth 26 (log2(leaf_count) for 2^26 leaves), limb bits 64, limb count 4.
